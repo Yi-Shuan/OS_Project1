@@ -64,13 +64,14 @@ void schedule(int n, process_info *process, int policy){
                 process[i].pid = create_process(&process[i]);
                 //Block the process immediately
                 stop_process(process[i].pid);
+                fprintf(stderr, "process %d start at %d pid = %d\n", i, time, process[i].pid);
             }
         }
         if (process[running_proc].exec_t == 0){
             //wait for the child process if it has finished execution
             fprintf(stderr, "Wait for process %d with pid = %d...\n", running_proc, process[running_proc].pid);
             waitpid(process[running_proc].pid, NULL, 0);
-            fprintf(stderr, "Reap the process\n");
+            fprintf(stderr, "Reap the process at time %d\n", time);
             process[running_proc].pid = -1;
             running_proc = -1;
             finished_proc++;
@@ -90,8 +91,10 @@ void schedule(int n, process_info *process, int policy){
             }
             
             if (shortest != -1){ // found shortest job
-                if (running_proc != -1) // stop the current process
+                if (running_proc != -1) // stop the current process{
                     stop_process(process[running_proc].pid);
+                    fprintf(stderr, "context switch from process %d to process %d at time %d\n", running_proc, shortest, time);
+                }
                 start_process(process[shortest].pid);    
             }
             
@@ -106,6 +109,7 @@ void schedule(int n, process_info *process, int policy){
                         if (process[i].pid != -1){
                             start_process(process[i].pid);
                             running_proc = i;
+                            fprintf(stderr, "Run process %d at time %d\n", i, time);
                             break;
                         }   
                     }
@@ -122,8 +126,10 @@ void schedule(int n, process_info *process, int policy){
                                 shortest = i;
                         }
                     }
-                    if (shortest != -1)
+                    if (shortest != -1){
                         start_process(process[shortest].pid);
+                        fprintf(stderr, "Run process %d at time %d\n", shortest, time);
+                    }
                     running_proc = shortest;
                 }
             }
