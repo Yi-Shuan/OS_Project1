@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -28,7 +29,7 @@ pid_t create_process(process_info *process){
     pid_t pid = fork();
     int time = 0;
     if (pid == 0){
-        while(time < process.exec_t){
+        while(time < process->exec_t){
             UNIT_TIME();
             time++;    
         }
@@ -69,7 +70,7 @@ void schedule(int n, process_info *process, int policy){
             //wait for the child process if it has finished execution
             fprintf(stderr, "Wait for process %d with pid = %d...\n", running_proc, process[running_proc].pid);
             waitpid(process[running_proc].pid, NULL, 0);
-            fprintf(stderr, "Reap the process\n", );
+            fprintf(stderr, "Reap the process\n");
             process[running_proc].pid = -1;
             running_proc = -1;
             finished_proc++;
@@ -103,7 +104,7 @@ void schedule(int n, process_info *process, int policy){
                 if (policy == FIFO || policy == RR){
                     for (int i = 0; i < n; i++){
                         if (process[i].pid != -1){
-                            start_process(process[i].pid)
+                            start_process(process[i].pid);
                             running_proc = i;
                             break;
                         }   
