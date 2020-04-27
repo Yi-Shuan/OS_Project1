@@ -16,7 +16,7 @@
 
 
 typedef struct proc{
-    char name[20];
+    char name[64];
     int ready_t, exec_t;
     pid_t pid;
 }process_info;
@@ -156,16 +156,18 @@ void schedule(int n, process_info *process, int policy){
 
 int main(int argc, char const *argv[])
 {
-    char policy_name[10]; // scheduling policy
+    char policy_name[64]; // scheduling policy
     int n; //the number of processes
     int policy; //specify the schedule policy
     process_info *process;
 
     scanf("%s", policy_name);
     scanf("%d", &n);
+    process = (process_info*)malloc(n*sizeof(process_info));
     for (int i = 0; i < n; i++){
         scanf("%s%d%d", process[i].name, &process[i].ready_t, &process[i].exec_t);
         process[i].pid = -1;
+	fprintf(stderr, "%s %d %d\n", process[i].name, process[i].ready_t, process[i].exec_t);
     }
     if (strcmp(policy_name, "FIFO") == 0)
         policy = FIFO;
@@ -173,7 +175,7 @@ int main(int argc, char const *argv[])
         policy = RR;
     else if (strcmp(policy_name, "SJF") == 0)
         policy = SJF;
-    else if (strcmp(policy_name, "RR") == 0)
+    else if (strcmp(policy_name, "PSJF") == 0)
         policy = PSJF;
     else
         fprintf(stderr, "No such scheduling policy\n");
