@@ -37,13 +37,13 @@ pid_t create_process(process_info *process){
     return pid;
 }
 
-void stop_process(pid_t pid){
+int stop_process(pid_t pid){
     struct sched_param param;
     param.sched_priority = 0;
     return sched_setscheduler(pid, SCHED_IDLE, &param);
 }
 
-void start_process(pid_t pid){
+int start_process(pid_t pid){
     struct sched_param param;
     param.sched_priority = 0;
     return sched_setscheduler(pid, SCHED_OTHER, &param);
@@ -59,13 +59,17 @@ void schedule(int n, process_info *process, int policy){
     while(finished_proc < n){
         for (int i = 0; i < n; i++){
             if (process[i].ready_t == time){
+                //Start a process at its ready time
                 process[i].pid = create_process(&process[i]);
+                //Block the process immediately
                 stop_process(process[i].pid);
             }
         }
         if (process[running_proc].exec_t == 0){
-            //wait for the child process
+            //wait for the child process if it has finished execution
+            fprintf(stderr, "Wait for process %d with pid = %d...\n", running_proc, process[running_proc].pid);
             waitpid(process[running_proc].pid, NULL, 0);
+            fprintf(stderr, "Reap the process\n", );
             process[running_proc].pid = -1;
             running_proc = -1;
             finished_proc++;
@@ -83,23 +87,26 @@ void schedule(int n, process_info *process, int policy){
                         shortest = i;
                 }
             }
-            if (running_proc != -1)
-                stop_process(process[running_proc].pid);
-            start_process(process[shortest].pid);
+            
+            if (shortest != -1){ // found shortest job
+                if (running_proc != -1) // stop the current process
+                    stop_process(process[running_proc].pid);
+                start_process(process[shortest].pid);    
+            }
+            
             running_proc = shortest;
             
         }
         else{
-            if (running_proc == -1){ 
+            if (running_proc == -1){ //No running process
             //choose a job to run by the policy
-                if (policy = FIFO || policy = RR){
+                if (policy == FIFO || policy == RR){
                     for (int i = 0; i < n; i++){
                         if (process[i].pid != -1){
                             start_process(process[i].pid)
                             running_proc = i;
                             break;
-                        }
-                            
+                        }   
                     }
                 }
                 else if (policy == SJF){
@@ -114,15 +121,16 @@ void schedule(int n, process_info *process, int policy){
                                 shortest = i;
                         }
                     }
-                    start_process(process[shortest].pid);
+                    if (shortest != -1)
+                        start_process(process[shortest].pid);
                     running_proc = shortest;
                 }
             }
             else{
-                if (policy == RR){
+                if (policy == RR){ // Round Robin policy check for the time quantum
                     if ((time - prev_start_t) == 500){
                         int i = (running_proc + 1) % n;
-                        while (i != running_proc && process[i].pid == -1)
+                        while (i != running_proc && process[i].pid == -1) // circular find a process that has been created
                             i = (i + 1) % n;
                         if (i != running_proc){
                             stop_process(process[running_proc].pid);
@@ -149,6 +157,7 @@ int main(int argc, char const *argv[])
 {
     char policy_name[10]; // scheduling policy
     int n; //the number of processes
+    int policy; //specify the schedule policy
     process_info *process;
 
     scanf("%s", policy_name);
@@ -158,12 +167,16 @@ int main(int argc, char const *argv[])
         process[i].pid = -1;
     }
     if (strcmp(policy_name, "FIFO") == 0)
+        policy = FIFO;
     else if (strcmp(policy_name, "RR") == 0)
+        policy = RR;
+    else if (strcmp(policy_name, "SJF") == 0)
+        policy = SJF;
     else if (strcmp(policy_name, "RR") == 0)
-    else if (strcmp(policy_name, "RR") == 0)
+        policy = PSJF;
     else
         fprintf(stderr, "No such scheduling policy\n");
-    schedule(n, process);
+    schedule(n, process, policy);
 
     return 0;
 }
