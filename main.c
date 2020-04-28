@@ -29,6 +29,10 @@ pid_t create_process(process_info *process){
     pid_t pid = fork();
     int time = 0;
     if (pid == 0){
+        cpu_set_t child_set;        
+        CPU_ZERO(&child_set);       /* Initialize */
+        CPU_SET(0, &child_set);     /* set the core 0 for scheduler */
+        sched_setaffinity(getpid(), sizeof(cpu_set_t), &child_set);
         while(time < process->exec_t){
             UNIT_TIME();
             time++;    
@@ -64,12 +68,12 @@ void schedule(int n, process_info *process, int policy){
                 process[i].pid = create_process(&process[i]);
                 //Block the process immediately
                 stop_process(process[i].pid);
-                fprintf(stderr, "process %d start at %d pid = %d\n", i, time, process[i].pid);
+                fprintf(stderr, "process %s start at %d pid = %d\n", process[i].name, time, process[i].pid);
             }
         }
         if (process[running_proc].exec_t == 0){
             //wait for the child process if it has finished execution
-            fprintf(stderr, "Wait for process %d with pid = %d...\n", running_proc, process[running_proc].pid);
+            fprintf(stderr, "Wait for process %s with pid = %d......", process[running_proc].name, process[running_proc].pid);
             waitpid(process[running_proc].pid, NULL, 0);
             fprintf(stderr, "Reap the process at time %d\n", time);
             process[running_proc].pid = -1;
@@ -91,9 +95,10 @@ void schedule(int n, process_info *process, int policy){
             }
             
             if (shortest != -1){ // found shortest job
-                if (running_proc != -1) // stop the current process{
+                if (running_proc != -1){ // stop the current process
                     stop_process(process[running_proc].pid);
-                    fprintf(stderr, "context switch from process %d to process %d at time %d\n", running_proc, shortest, time);
+                    if (running_proc != shortest)
+                        fprintf(stderr, "context switch from process %s to process %s at time %d\n", process[running_proc].name, process[shortest].name, time);
                 }
                 start_process(process[shortest].pid);    
             }
@@ -109,7 +114,8 @@ void schedule(int n, process_info *process, int policy){
                         if (process[i].pid != -1){
                             start_process(process[i].pid);
                             running_proc = i;
-                            fprintf(stderr, "Run process %d at time %d\n", i, time);
+                            prev_start_t = time;
+                            fprintf(stderr, "Run process %s at time %d\n", process[i].name, time);
                             break;
                         }   
                     }
@@ -128,7 +134,7 @@ void schedule(int n, process_info *process, int policy){
                     }
                     if (shortest != -1){
                         start_process(process[shortest].pid);
-                        fprintf(stderr, "Run process %d at time %d\n", shortest, time);
+                        fprintf(stderr, "Run process %s at time %d\n", process[shortest].name, time);
                     }
                     running_proc = shortest;
                 }
@@ -140,6 +146,7 @@ void schedule(int n, process_info *process, int policy){
                         while (i != running_proc && process[i].pid == -1) // circular find a process that has been created
                             i = (i + 1) % n;
                         if (i != running_proc){
+                            fprintf(stderr, "Process %s expired, switch to process %s at time %d\n", process[running_proc].name, process[i].name, time);
                             stop_process(process[running_proc].pid);
                             start_process(process[i].pid);
                         }
@@ -185,6 +192,10 @@ int main(int argc, char const *argv[])
         policy = PSJF;
     else
         fprintf(stderr, "No such scheduling policy\n");
+    cpu_set_t scheduler_set;        
+    CPU_ZERO(&scheduler_set);       /* Initialize */
+    CPU_SET(0, &scheduler_set);     /* set the core 0 for scheduler */
+    sched_setaffinity(getpid(), sizeof(cpu_set_t), &scheduler_set); 
     schedule(n, process, policy);
 
     return 0;
