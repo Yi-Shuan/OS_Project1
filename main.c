@@ -14,6 +14,7 @@
 #define SJF 2
 #define PSJF 3
 
+//#define DEBUG
 
 typedef struct proc{
     char name[64];
@@ -22,21 +23,28 @@ typedef struct proc{
 }process_info;
 
 int cmp(const void *a, const void *b) {
-    return ((process_info *)a)->ready_t - ((process_info *)b)->exec_t;
+    return ((process_info *)a)->ready_t - ((process_info *)b)->ready_t;
 }
 
 pid_t create_process(process_info *process){
     pid_t pid = fork();
     int time = 0;
     if (pid == 0){
+        unsigned long start_sec, start_nsec, end_sec, end_nsec;
+        char proc_time[256];
         cpu_set_t child_set;        
         CPU_ZERO(&child_set);       /* Initialize */
-        CPU_SET(0, &child_set);     /* set the core 0 for scheduler */
+        CPU_SET(1, &child_set);     /* set the core 1 for child */
         sched_setaffinity(getpid(), sizeof(cpu_set_t), &child_set);
+        syscall(333, &start_sec, &start_nsec);
+        printf("%s %d\n", process->name, getpid());
         while(time < process->exec_t){
             UNIT_TIME();
             time++;    
         }
+        syscall(333, &end_sec, &end_nsec);
+        sprintf(proc_time, "[Project1] %d %lu.%09lu %lu.%09lu\n", getpid(), start_sec, start_nsec, end_sec, end_nsec);
+        syscall(334, proc_time);
         exit(0);
     }
     return pid;
@@ -57,6 +65,11 @@ int start_process(pid_t pid){
 void schedule(int n, process_info *process, int policy){
     //sort the processes by ready time
     qsort(process, n, sizeof(process_info), cmp);
+#ifdef DEBUG    
+    fprintf(stderr, "Sort the processes by ready time\n" );
+    for (int i = 0; i < n; i++)
+        fprintf(stderr, "%s %d %d\n", process[i].name, process[i].ready_t, process[i].exec_t);
+#endif
     int time = 0;
     int running_proc = -1;
     int prev_start_t = 0;
@@ -66,6 +79,7 @@ void schedule(int n, process_info *process, int policy){
             if (process[i].ready_t == time){
                 //Start a process at its ready time
                 process[i].pid = create_process(&process[i]);
+
                 //Block the process immediately
                 stop_process(process[i].pid);
 #ifdef DEBUG
@@ -181,6 +195,10 @@ void schedule(int n, process_info *process, int policy){
         if (running_proc != -1){
             process[running_proc].exec_t--;
         }
+#ifdef DEBUG
+        if(time % 5000 == 0)
+            fprintf(stderr, "time %d\n", time);
+#endif        
     }
     
 }
@@ -198,7 +216,9 @@ int main(int argc, char const *argv[])
     for (int i = 0; i < n; i++){
         scanf("%s%d%d", process[i].name, &process[i].ready_t, &process[i].exec_t);
         process[i].pid = -1;
-	fprintf(stderr, "%s %d %d\n", process[i].name, process[i].ready_t, process[i].exec_t);
+#ifdef DEBUG
+	    fprintf(stderr, "%s %d %d\n", process[i].name, process[i].ready_t, process[i].exec_t);
+#endif
     }
     if (strcmp(policy_name, "FIFO") == 0)
         policy = FIFO;
