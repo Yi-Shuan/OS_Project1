@@ -68,14 +68,20 @@ void schedule(int n, process_info *process, int policy){
                 process[i].pid = create_process(&process[i]);
                 //Block the process immediately
                 stop_process(process[i].pid);
+#ifdef DEBUG
                 fprintf(stderr, "process %s start at %d pid = %d\n", process[i].name, time, process[i].pid);
+#endif
             }
         }
         if (process[running_proc].exec_t == 0){
             //wait for the child process if it has finished execution
+#ifdef DEBUG
             fprintf(stderr, "Wait for process %s with pid = %d......", process[running_proc].name, process[running_proc].pid);
+#endif
             waitpid(process[running_proc].pid, NULL, 0);
+#ifdef DEBUG
             fprintf(stderr, "Reap the process at time %d\n", time);
+#endif
             process[running_proc].pid = -1;
             running_proc = -1;
             finished_proc++;
@@ -97,9 +103,15 @@ void schedule(int n, process_info *process, int policy){
             if (shortest != -1){ // found shortest job
                 if (running_proc != -1){ // stop the current process
                     stop_process(process[running_proc].pid);
+#ifdef DEBUG
                     if (running_proc != shortest)
                         fprintf(stderr, "context switch from process %s to process %s at time %d\n", process[running_proc].name, process[shortest].name, time);
+#endif
                 }
+#ifdef DEBUG
+                else
+                    fprintf(stderr, "Run process %s at time %d\n", process[shortest].name, time);
+#endif                
                 start_process(process[shortest].pid);    
             }
             
@@ -115,7 +127,9 @@ void schedule(int n, process_info *process, int policy){
                             start_process(process[i].pid);
                             running_proc = i;
                             prev_start_t = time;
+#ifdef DEBUG                            
                             fprintf(stderr, "Run process %s at time %d\n", process[i].name, time);
+#endif
                             break;
                         }   
                     }
@@ -134,7 +148,9 @@ void schedule(int n, process_info *process, int policy){
                     }
                     if (shortest != -1){
                         start_process(process[shortest].pid);
+#ifdef DEBUG                        
                         fprintf(stderr, "Run process %s at time %d\n", process[shortest].name, time);
+#endif
                     }
                     running_proc = shortest;
                 }
@@ -146,7 +162,9 @@ void schedule(int n, process_info *process, int policy){
                         while (i != running_proc && process[i].pid == -1) // circular find a process that has been created
                             i = (i + 1) % n;
                         if (i != running_proc){
+#ifdef DEBUG
                             fprintf(stderr, "Process %s expired, switch to process %s at time %d\n", process[running_proc].name, process[i].name, time);
+#endif
                             stop_process(process[running_proc].pid);
                             start_process(process[i].pid);
                         }
