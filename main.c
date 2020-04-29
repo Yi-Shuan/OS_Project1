@@ -8,7 +8,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#define UNIT_TIME() { volatile unsigned long i; for(i=0;i<1000000UL;i++); } 
+#define UNIT_TIME() { volatile unsigned long unit; for(unit=0;unit<1000000UL;unit++); } 
 #define FIFO 0
 #define RR 1 
 #define SJF 2
@@ -95,6 +95,7 @@ void schedule(int n, process_info *process, int policy){
     number = 0, front = 0, end = 0;
     unsigned long start_sec[30], start_nsec[30], end_sec[30], end_nsec[30];
     char proc_time[256];
+    start_process(getpid());
     while(finished_proc < n){
         for (int i = 0; i < n; i++){
             if (process[i].ready_t == time){
